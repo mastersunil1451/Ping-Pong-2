@@ -14,7 +14,7 @@
         }
         #container {
             width: 100vw;
-            height: 100vh;
+            height: 90vh;
            /* min-height: 200vw; /* Height ≥ 2x width */
             max-width: 50vh; /* Ensures height drives the layout */
             margin: 0 auto;
@@ -134,7 +134,7 @@
 
         // Game variables
         let ball, paddle1, paddle2, isAIMode = false, gameRunning = false, score = 0;
-        const paddleSpeed = 5, initialBallSpeed = 4, speedIncrease = 0.002; // Speed increases gradually
+        const paddleSpeed = 8, initialBallSpeed = 4, speedIncrease = 0.002; // Speed increases gradually
         let ballSpeedX = initialBallSpeed, ballSpeedY = initialBallSpeed;
 
         function initGame(aiMode) {
