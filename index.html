@@ -1,283 +1,371 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ping Pong Mania</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        #container {
-            width: 100vw;
-            height: 90vh;
-           /* min-height: 200vw; /* Height ≥ 2x width */
-            max-width: 50vh; /* Ensures height drives the layout */
-            margin: 0 auto;
-            position: relative;
-            background: #000;
-            color: #fff;
-            overflow: hidden;
-        }
-        #menu, #how-to-play, #mode-select, #game-over {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-        #menu h1 {
-            font-size: 2em;
-            margin-bottom: 1em;
-        }
-        button {
-            font-size: 1.2em;
-            padding: 0.5em 1em;
-            margin: 0.5em;
-            cursor: pointer;
-        }
-        #game {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-        }
-        #how-to-play p {
-            padding: 0 1em;
-            font-size: 1.1em;
-        }
-        #game-over p {
-            font-size: 1.5em;
-        }
-    </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    body { 
+      margin: 0; 
+      overflow: hidden;
+      position: relative;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    /* Start screen style */
+    #startScreen {
+      text-align: center;
+    }
+    #startScreen button, #restartBtn, #homeBtn {
+      font-size: 24px;
+      padding: 15px 30px;
+      background: #4CAF50;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    /* Hide game container initially */
+    #gameContainer {
+      display: none;
+      position: relative;
+    }
+    canvas { 
+      width: 100vw; 
+      height: 100vh; 
+      display: block;
+    }
+    #gameOver {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <div id="container">
-        <div id="menu">
-            <h1>Ping Pong Mania</h1>
-            <button id="start-btn">Start Game</button>
-            <button id="how-to-play-btn">How to Play</button>
-        </div>
-        <div id="how-to-play" style="display: none;">
-            <h1>How to Play</h1>
-            <p>
-                - Use touch-and-hold to move paddles left or right (hold to keep moving, release to stop).<br>
-                - On desktop, use arrow keys: Left/Right for bottom paddle, A/D for top paddle (in 2-player mode).<br>
-                - Single Player: Play against AI; earn 1 point each time you hit the ball; game ends if you miss.<br>
-                - Two Players: Both control a paddle; game ends if either misses the ball.<br>
-                - Watch out: The ball speeds up over time!
-            </p>
-            <button id="back-to-menu">Back</button>
-        </div>
-        <div id="mode-select" style="display: none;">
-            <h1>Choose Mode</h1>
-            <button id="ai-mode">Play vs AI</button>
-            <button id="friend-mode">Play with Friend</button>
-        </div>
-        <div id="game" style="display: none;">
-            <canvas id="game-canvas"></canvas>
-        </div>
-        <div id="game-over" style="display: none;">
-            <h1>Game Over</h1>
-            <p id="score-display"></p>
-            <button id="restart-btn">Restart</button>
-            <button id="back-btn">Back</button>
-        </div>
-    </div>
 
-    <script>
-        const container = document.getElementById('container');
-        const menu = document.getElementById('menu');
-        const howToPlay = document.getElementById('how-to-play');
-        const modeSelect = document.getElementById('mode-select');
-        const gameDiv = document.getElementById('game');
-        const gameOverDiv = document.getElementById('game-over');
-        const scoreDisplay = document.getElementById('score-display');
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
+<!-- Start screen: Now contains Start Game, Play vs AI and Difficulty buttons -->
+<div id="startScreen">
+    <button id="modeBtn">Play vs AI</button>
+    <button id="aiDifficulty" style="display:none;">Easy</button>
+    <br>
+    <button id="startGameBtn">Start Game</button>
+</div>
 
-        // Set canvas size
-        function resizeCanvas() {
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
+<!-- Game container: Will be shown after Start Game is clicked -->
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+  <div id="gameOver">
+      <h2>Game Over!</h2>
+      <p id="winner"></p>
+      <p>Score: <span id="finalScore"></span></p>
+      <button id="restartBtn">Restart</button>
+      <button id="homeBtn">Home</button>
+  </div>
+</div>
+
+<script>
+// Get elements for start screen and game container
+const startScreen = document.getElementById('startScreen');
+const startGameBtn = document.getElementById('startGameBtn');
+const modeBtn = document.getElementById('modeBtn');
+const aiDifficultyBtn = document.getElementById('aiDifficulty');
+const gameContainer = document.getElementById('gameContainer');
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const gameOverScreen = document.getElementById('gameOver');
+const restartBtn = document.getElementById('restartBtn');
+
+// Game settings
+const ai = {
+    enabled: false,
+    difficulty: 0.8, // 0.6 (easy), 0.8 (medium), 1.0 (hard)
+    speed: 5
+};
+
+// Game objects
+const topPaddle = {
+    width: 120,
+    height: 20,
+    x: 0,
+    y: 0,
+    score: 0,
+    isAI: false
+};
+
+const bottomPaddle = {
+    width: 120,
+    height: 20,
+    x: 0,
+    y: 0,
+    score: 0,
+    isAI: false
+};
+
+const ball = {
+    size: 20,
+    x: 0,
+    y: 0,
+    speedX: 3,
+    speedY: 5,
+    baseSpeed: 5
+};
+
+const maxScore = 5;
+let gameOver = false;
+const touchMap = {};
+
+// Start screen button event listeners
+
+modeBtn.addEventListener('click', () => {
+    // Toggle AI mode for top paddle
+    if (modeBtn.textContent === 'Play vs AI') {
+        modeBtn.textContent = '2 Player';
+        aiDifficultyBtn.style.display = 'inline-block';
+        ai.enabled = true;
+    } else {
+        modeBtn.textContent = 'Play vs AI';
+       aiDifficultyBtn.style.display = 'none'; // Display remains – if needed adjust logic
+        ai.enabled = false;
+    }
+});
+
+aiDifficultyBtn.addEventListener('click', () => {
+    const levels = [
+        { label: 'Easy', value: 0.6 },
+        { label: 'Medium', value: 0.75 },
+        { label: 'Hard', value: 0.9 }
+    ];
+    
+    const currentIndex = levels.findIndex(l => l.value === ai.difficulty);
+    const nextIndex = (currentIndex + 1) % levels.length;
+    ai.difficulty = levels[nextIndex].value;
+    aiDifficultyBtn.textContent = levels[nextIndex].label;
+});
+
+// Start game button event listener
+startGameBtn.addEventListener('click', () => {
+    // Before starting, set the AI status for paddles based on selected options
+    topPaddle.isAI = ai.enabled;  // top paddle gets AI control if enabled
+    bottomPaddle.isAI = false;     // let bottom paddle be controlled by touch
+
+    // Hide start screen and show game container
+    startScreen.style.display = 'none';
+    gameContainer.style.display = 'block';
+    init();
+});
+
+// Initialize game function
+function init() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Position paddles
+    topPaddle.x = (canvas.width - topPaddle.width) / 2;
+    bottomPaddle.x = (canvas.width - bottomPaddle.width) / 2;
+    bottomPaddle.y = canvas.height - bottomPaddle.height;
+    
+    resetBall();
+    
+    // Add touch event listeners
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', handleTouchEnd);
+    
+    restartBtn.addEventListener('click', resetGame);
+    
+    requestAnimationFrame(gameLoop);
+}
+
+// Game loop
+function gameLoop() {
+    if (!gameOver) {
+        update();
+        draw();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+// Update game state
+function update() {
+    // AI movement for top paddle
+    if (topPaddle.isAI) {
+        const targetX = ball.x + ball.size/2 - topPaddle.width/2;
+        topPaddle.x += (targetX - topPaddle.x) * ai.difficulty;
+        topPaddle.x = Math.max(0, Math.min(canvas.width - topPaddle.width, topPaddle.x));
+    }
+
+    // Move ball
+    ball.x += ball.speedX;
+    ball.y += ball.speedY;
+
+    // Ball collision with left/right walls
+    if (ball.x <= 0 || ball.x + ball.size >= canvas.width) {
+        ball.speedX *= -1;
+    }
+
+    // Ball collision with top paddle
+    if (ball.y <= topPaddle.height &&
+        ball.x + ball.size > topPaddle.x &&
+        ball.x < topPaddle.x + topPaddle.width) {
+        ball.speedY *= -1.1; 
+        ball.speedX *= 1.1;
+    }
+
+    // Ball collision with bottom paddle
+    if (ball.y + ball.size >= bottomPaddle.y &&
+        ball.x + ball.size > bottomPaddle.x &&
+        ball.x < bottomPaddle.x + bottomPaddle.width) {
+        ball.speedY *= -1.1;
+        ball.speedX *= 1.1;
+    }
+
+    // Score detection
+    if (ball.y < 0) {
+        bottomPaddle.score++;
+        checkGameOver();
+        resetBall();
+    }
+    
+    if (ball.y > canvas.height) {
+        topPaddle.score++;
+        checkGameOver();
+        resetBall();
+    }
+}
+
+// Draw game elements
+function draw() {
+    // Clear screen
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw paddles
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(topPaddle.x, topPaddle.y, topPaddle.width, topPaddle.height);
+    ctx.fillRect(bottomPaddle.x, bottomPaddle.y, bottomPaddle.width, bottomPaddle.height);
+    
+    // Draw ball
+    ctx.beginPath();
+    ctx.arc(ball.x + ball.size/2, ball.y + ball.size/2, ball.size/2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw scores
+    ctx.font = '48px Arial';
+    ctx.fillText(topPaddle.score, canvas.width/2 - 60, 60);
+    ctx.fillText(bottomPaddle.score, canvas.width/2 + 60, canvas.height - 20);
+}
+
+// Reset ball position and speed
+function resetBall() {
+    ball.x = canvas.width/2 - ball.size/2;
+    ball.y = canvas.height/2 - ball.size/2;
+    ball.speedX = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+    ball.speedY = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+}
+
+// Touch handlers
+function handleTouchStart(e) {
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(touch => {
+        const rect = canvas.getBoundingClientRect();
+        const isTop = touch.clientY < rect.height/2;
+        
+        if (!topPaddle.isAI && isTop) {
+            touchMap[touch.identifier] = { isTop: true, startX: touch.clientX };
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        // Button event listeners
-        document.getElementById('start-btn').addEventListener('click', () => {
-            menu.style.display = 'none';
-            modeSelect.style.display = 'flex';
-        });
-        document.getElementById('how-to-play-btn').addEventListener('click', () => {
-            menu.style.display = 'none';
-            howToPlay.style.display = 'flex';
-        });
-        document.getElementById('back-to-menu').addEventListener('click', () => {
-            howToPlay.style.display = 'none';
-            menu.style.display = 'flex';
-        });
-
-        // Game variables
-        let ball, paddle1, paddle2, isAIMode = false, gameRunning = false, score = 0;
-        const paddleSpeed = 8, initialBallSpeed = 4, speedIncrease = 0.002; // Speed increases gradually
-        let ballSpeedX = initialBallSpeed, ballSpeedY = initialBallSpeed;
-
-        function initGame(aiMode) {
-            isAIMode = aiMode;
-            modeSelect.style.display = 'none';
-            gameDiv.style.display = 'block';
-            gameRunning = true;
-            score = 0;
-            scoreDisplay.textContent = '';
-
-            paddle1 = { x: canvas.width / 2 - 50, y: canvas.height - 20, width: 100, height: 10, dx: 0 };
-            paddle2 = { x: canvas.width / 2 - 50, y: 10, width: 100, height: 10, dx: 0 };
-            ball = { x: canvas.width / 2, y: canvas.height / 2, radius: 10, dx: initialBallSpeed, dy: -initialBallSpeed };
-            ballSpeedX = initialBallSpeed;
-            ballSpeedY = initialBallSpeed;
-            gameLoop();
+        if (!bottomPaddle.isAI && !isTop) {
+            touchMap[touch.identifier] = { isTop: false, startX: touch.clientX };
         }
+    });
+}
 
-        document.getElementById('ai-mode').addEventListener('click', () => initGame(true));
-        document.getElementById('friend-mode').addEventListener('click', () => initGame(false));
-
-        // Touch controls
-        let touch1 = null, touch2 = null;
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touches = e.touches;
-            if (touches[0].clientY > canvas.height / 2) {
-                touch1 = touches[0].identifier;
-                paddle1.dx = touches[0].clientX < paddle1.x + paddle1.width / 2 ? -paddleSpeed : paddleSpeed;
-            }
-            if (!isAIMode && touches.length > 1 && touches[1].clientY < canvas.height / 2) {
-                touch2 = touches[1].identifier;
-                paddle2.dx = touches[1].clientX < paddle2.x + paddle2.width / 2 ? -paddleSpeed : paddleSpeed;
-            }
-        });
-        canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touches = e.touches;
-            for (let touch of touches) {
-                if (touch.identifier === touch1) {
-                    paddle1.dx = touch.clientX < paddle1.x + paddle1.width / 2 ? -paddleSpeed : paddleSpeed;
-                }
-                if (!isAIMode && touch.identifier === touch2) {
-                    paddle2.dx = touch.clientX < paddle2.x + paddle2.width / 2 ? -paddleSpeed : paddleSpeed;
-                }
-            }
-        });
-        canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const touches = e.changedTouches;
-            for (let touch of touches) {
-                if (touch.identifier === touch1) {
-                    paddle1.dx = 0;
-                    touch1 = null;
-                }
-                if (!isAIMode && touch.identifier === touch2) {
-                    paddle2.dx = 0;
-                    touch2 = null;
-                }
-            }
-        });
-
-        // Keyboard controls
-        const keys = {};
-        document.addEventListener('keydown', (e) => { keys[e.key] = true; });
-        document.addEventListener('keyup', (e) => { keys[e.key] = false; });
-
-        function updatePaddles() {
-            if (keys['ArrowLeft']) paddle1.dx = -paddleSpeed;
-            else if (keys['ArrowRight']) paddle1.dx = paddleSpeed;
-            else if (!touch1) paddle1.dx = 0;
-
-            if (!isAIMode) {
-                if (keys['a']) paddle2.dx = -paddleSpeed;
-                else if (keys['d']) paddle2.dx = paddleSpeed;
-                else if (!touch2) paddle2.dx = 0;
-            }
-            paddle1.x = Math.max(0, Math.min(canvas.width - paddle1.width, paddle1.x + paddle1.dx));
-            paddle2.x = Math.max(0, Math.min(canvas.width - paddle2.width, paddle2.x + paddle2.dx));
-        }
-
-        function updateBall() {
-            ball.x += ball.dx;
-            ball.y += ball.dy;
-
-            // Gradually increase speed
-            ballSpeedX = Math.sign(ball.dx) * (Math.abs(ballSpeedX) + speedIncrease);
-            ballSpeedY = Math.sign(ball.dy) * (Math.abs(ballSpeedY) + speedIncrease);
-            ball.dx = ballSpeedX;
-            ball.dy = ballSpeedY;
-
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) ball.dx = -ball.dx;
-            if (ball.y + ball.radius > paddle1.y && ball.x > paddle1.x && ball.x < paddle1.x + paddle1.width) {
-                ball.dy = -ballSpeedY;
-                if (isAIMode) score++; // Score increases when player hits ball in AI mode
-            }
-            if (ball.y - ball.radius < paddle2.y + paddle2.height && ball.x > paddle2.x && ball.x < paddle2.x + paddle2.width) {
-                ball.dy = -ballSpeedY;
-            }
-            if (ball.y < 0 || ball.y > canvas.height) endGame();
-        }
-
-        function aiMove() {
-            if (isAIMode) {
-                paddle2.dx = ball.x < paddle2.x + paddle2.width / 2 ? -paddleSpeed : paddleSpeed;
-                paddle2.x = Math.max(0, Math.min(canvas.width - paddle2.width, paddle2.x + paddle2.dx));
+function handleTouchMove(e) {
+    e.preventDefault();
+    Array.from(e.touches).forEach(touch => {
+        if (touchMap[touch.identifier]) {
+            const rect = canvas.getBoundingClientRect();
+            if (touchMap[touch.identifier].isTop && !topPaddle.isAI) {
+                topPaddle.x = Math.max(0, Math.min(
+                    canvas.width - topPaddle.width,
+                    touch.clientX - topPaddle.width/2
+                ));
+            } else if (!touchMap[touch.identifier].isTop && !bottomPaddle.isAI) {
+                bottomPaddle.x = Math.max(0, Math.min(
+                    canvas.width - bottomPaddle.width,
+                    touch.clientX - bottomPaddle.width/2
+                ));
             }
         }
+    });
+}
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(paddle1.x, paddle1.y, paddle1.width, paddle1.height);
-            ctx.fillRect(paddle2.x, paddle2.y, paddle2.width, paddle2.height);
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fill();
+function handleTouchEnd(e) {
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(touch => {
+        delete touchMap[touch.identifier];
+    });
+}
+
+// Check game over condition
+function checkGameOver() {
+    if (topPaddle.score >= maxScore || bottomPaddle.score >= maxScore) {
+        gameOver = true;
+        gameOverScreen.style.display = 'block';
+        
+        if (topPaddle.isAI) {
+            document.getElementById('winner').textContent = 
+                topPaddle.score > bottomPaddle.score ? 'AI Wins!' : 'You Win!';
+        } else {
+            document.getElementById('winner').textContent = 
+                topPaddle.score > bottomPaddle.score ? 'Top Player Wins!' : 'Bottom Player Wins!';
         }
+        
+        document.getElementById('finalScore').textContent = `${topPaddle.score} - ${bottomPaddle.score}`;
+    }
+}
 
-        function gameLoop() {
-            if (!gameRunning) return;
-            updatePaddles();
-            aiMove();
-            updateBall();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
+// Reset game
+function resetGame() {
+    gameOver = false;
+    gameOverScreen.style.display = 'none';
+    topPaddle.score = 0;
+    bottomPaddle.score = 0;
+    resetBall();
+}
 
-        function endGame() {
-            gameRunning = false;
-            gameDiv.style.display = 'none';
-            gameOverDiv.style.display = 'flex';
-            if (isAIMode) scoreDisplay.textContent = `Score: ${score}`;
-        }
+// Handle window resize
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    bottomPaddle.y = canvas.height - bottomPaddle.height;
+});
+const homeBtn = document.getElementById('homeBtn');
 
-        document.getElementById('restart-btn').addEventListener('click', () => {
-            gameOverDiv.style.display = 'none';
-            initGame(isAIMode);
-        });
-        document.getElementById('back-btn').addEventListener('click', () => {
-            gameOverDiv.style.display = 'none';
-            menu.style.display = 'flex';
-        });
-    </script>
+homeBtn.addEventListener('click', () => {
+    // Reset game state (optional if tumko reset chahiye)
+    gameOver = false;
+    gameOverScreen.style.display = 'none';
+    topPaddle.score = 0;
+    bottomPaddle.score = 0;
+    resetBall();
+
+    // Hide the game container and show the start screen
+    gameContainer.style.display = 'none';
+    startScreen.style.display = 'block';
+});
+</script>
 </body>
 </html>
