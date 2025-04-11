@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- Added viewport-fit=cover to handle safe area insets -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <style>
     body { 
       margin: 0; 
@@ -14,6 +15,8 @@
       height: 100vh;
       color: #fff;
       font-family: Arial, sans-serif;
+      /* Adding safe area padding for bottom */
+      padding-bottom: env(safe-area-inset-bottom);
     }
     /* Start screen style */
     #startScreen {
@@ -34,9 +37,10 @@
       display: none;
       position: relative;
     }
+    /* Adjust canvas height by subtracting the bottom safe area */
     canvas { 
       width: 100vw; 
-      height: 90vh; 
+      height: calc(90vh - env(safe-area-inset-bottom)); 
       display: block;
       max-width: 70vh;
       border: 2px solid white;
@@ -57,7 +61,7 @@
 </head>
 <body>
 
-<!-- Start screen: Now contains Start Game, Play vs AI and Difficulty buttons -->
+<!-- Start screen: Contains mode and game start buttons -->
 <div id="startScreen">
     <button id="modeBtn">Play vs AI</button>
     <button id="aiDifficulty" style="display:none;">Easy</button>
@@ -65,7 +69,7 @@
     <button id="startGameBtn">Start Game</button>
 </div>
 
-<!-- Game container: Will be shown after Start Game is clicked -->
+<!-- Game container: Shown after clicking Start Game -->
 <div id="gameContainer">
   <canvas id="gameCanvas"></canvas>
   <div id="gameOver">
@@ -89,11 +93,12 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const gameOverScreen = document.getElementById('gameOver');
 const restartBtn = document.getElementById('restartBtn');
+const homeBtn = document.getElementById('homeBtn');
 
 // Game settings
 const ai = {
     enabled: false,
-    difficulty: 0.8, // 0.6 (easy), 0.8 (medium), 1.0 (hard)
+    difficulty: 0.8, // 0.6 (easy), 0.8 (medium), 0.9 (hard)
     speed: 5
 };
 
@@ -121,8 +126,8 @@ const ball = {
     x: 0,
     y: 0,
     speedX: 3,
-    speedY: 5,
-    baseSpeed: 5
+    speedY: 4,        // initial Y speed set according to base speed
+    baseSpeed: 4      // Ball ki starting speed ko 5 se 4 kar diya
 };
 
 const maxScore = 5;
@@ -130,7 +135,6 @@ let gameOver = false;
 const touchMap = {};
 
 // Start screen button event listeners
-
 modeBtn.addEventListener('click', () => {
     // Toggle AI mode for top paddle
     if (modeBtn.textContent === 'Play vs AI') {
@@ -139,7 +143,7 @@ modeBtn.addEventListener('click', () => {
         ai.enabled = true;
     } else {
         modeBtn.textContent = 'Play vs AI';
-       aiDifficultyBtn.style.display = 'none'; // Display remains – if needed adjust logic
+        aiDifficultyBtn.style.display = 'none';
         ai.enabled = false;
     }
 });
@@ -147,7 +151,7 @@ modeBtn.addEventListener('click', () => {
 aiDifficultyBtn.addEventListener('click', () => {
     const levels = [
         { label: 'Easy', value: 0.6 },
-        { label: 'Medium', value: 0.75 },
+        { label: 'Medium', value: 0.8 },
         { label: 'Hard', value: 0.9 }
     ];
     
@@ -159,10 +163,10 @@ aiDifficultyBtn.addEventListener('click', () => {
 
 // Start game button event listener
 startGameBtn.addEventListener('click', () => {
-    // Before starting, set the AI status for paddles based on selected options
-    topPaddle.isAI = ai.enabled;  // top paddle gets AI control if enabled
-    bottomPaddle.isAI = false;     // let bottom paddle be controlled by touch
-
+    // Set AI control for top paddle and touch control for bottom paddle
+    topPaddle.isAI = ai.enabled;
+    bottomPaddle.isAI = false;
+    
     // Hide start screen and show game container
     startScreen.style.display = 'none';
     gameContainer.style.display = 'block';
@@ -171,13 +175,12 @@ startGameBtn.addEventListener('click', () => {
 
 // Initialize game function
 function init() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    resizeCanvas();
     
     // Position paddles
     topPaddle.x = (canvas.width - topPaddle.width) / 2;
     bottomPaddle.x = (canvas.width - bottomPaddle.width) / 2;
-    bottomPaddle.y = canvas.height - bottomPaddle.height;
+    bottomPaddle.y = canvas.height - bottomPaddle.height - getBottomOffset();
     
     resetBall();
     
@@ -191,6 +194,17 @@ function init() {
     requestAnimationFrame(gameLoop);
 }
 
+// Resize canvas function
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+// Calculate bottom offset using safe area insets (fallback to 20px if unavailable)
+function getBottomOffset() {
+    return parseInt(getComputedStyle(document.body).getPropertyValue('padding-bottom')) || 20;
+}
+
 // Game loop
 function gameLoop() {
     if (!gameOver) {
@@ -202,9 +216,12 @@ function gameLoop() {
 
 // Update game state
 function update() {
+    // Determine speed increment factor based on mode: lower increment for Vs AI mode
+    const speedIncrement = ai.enabled ? 1.02 : 1.04;
+    
     // AI movement for top paddle
     if (topPaddle.isAI) {
-        const targetX = ball.x + ball.size/2 - topPaddle.width/2;
+        const targetX = ball.x + ball.size / 2 - topPaddle.width / 2;
         topPaddle.x += (targetX - topPaddle.x) * ai.difficulty;
         topPaddle.x = Math.max(0, Math.min(canvas.width - topPaddle.width, topPaddle.x));
     }
@@ -222,16 +239,16 @@ function update() {
     if (ball.y <= topPaddle.height &&
         ball.x + ball.size > topPaddle.x &&
         ball.x < topPaddle.x + topPaddle.width) {
-        ball.speedY *= -1.1; 
-        ball.speedX *= 1.1;
+        ball.speedY *= -speedIncrement;
+        ball.speedX *= speedIncrement;
     }
 
     // Ball collision with bottom paddle
     if (ball.y + ball.size >= bottomPaddle.y &&
         ball.x + ball.size > bottomPaddle.x &&
         ball.x < bottomPaddle.x + bottomPaddle.width) {
-        ball.speedY *= -1.1;
-        ball.speedX *= 1.1;
+        ball.speedY *= -speedIncrement;
+        ball.speedX *= speedIncrement;
     }
 
     // Score detection
@@ -261,19 +278,20 @@ function draw() {
     
     // Draw ball
     ctx.beginPath();
-    ctx.arc(ball.x + ball.size/2, ball.y + ball.size/2, ball.size/2, 0, Math.PI * 2);
+    ctx.arc(ball.x + ball.size / 2, ball.y + ball.size / 2, ball.size / 2, 0, Math.PI * 2);
     ctx.fill();
     
     // Draw scores
     ctx.font = '48px Arial';
-    ctx.fillText(topPaddle.score, canvas.width/2 - 60, 60);
-    ctx.fillText(bottomPaddle.score, canvas.width/2 + 60, canvas.height - 20);
+    ctx.fillText(topPaddle.score, canvas.width / 2 - 60, 60);
+    ctx.fillText(bottomPaddle.score, canvas.width / 2 + 60, canvas.height - 20);
 }
 
 // Reset ball position and speed
 function resetBall() {
-    ball.x = canvas.width/2 - ball.size/2;
-    ball.y = canvas.height/2 - ball.size/2;
+    ball.x = canvas.width / 2 - ball.size / 2;
+    ball.y = canvas.height / 2 - ball.size / 2;
+    // Initial speeds based on the updated base speed (4 instead of 5)
     ball.speedX = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
     ball.speedY = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
 }
@@ -283,7 +301,7 @@ function handleTouchStart(e) {
     e.preventDefault();
     Array.from(e.changedTouches).forEach(touch => {
         const rect = canvas.getBoundingClientRect();
-        const isTop = touch.clientY < rect.height/2;
+        const isTop = touch.clientY < rect.height / 2;
         
         if (!topPaddle.isAI && isTop) {
             touchMap[touch.identifier] = { isTop: true, startX: touch.clientX };
@@ -302,12 +320,12 @@ function handleTouchMove(e) {
             if (touchMap[touch.identifier].isTop && !topPaddle.isAI) {
                 topPaddle.x = Math.max(0, Math.min(
                     canvas.width - topPaddle.width,
-                    touch.clientX - topPaddle.width/2
+                    touch.clientX - topPaddle.width / 2
                 ));
             } else if (!touchMap[touch.identifier].isTop && !bottomPaddle.isAI) {
                 bottomPaddle.x = Math.max(0, Math.min(
                     canvas.width - bottomPaddle.width,
-                    touch.clientX - bottomPaddle.width/2
+                    touch.clientX - bottomPaddle.width / 2
                 ));
             }
         }
@@ -328,10 +346,10 @@ function checkGameOver() {
         gameOverScreen.style.display = 'block';
         
         if (topPaddle.isAI) {
-            document.getElementById('winner').textContent = 
+            document.getElementById('winner').textContent =
                 topPaddle.score > bottomPaddle.score ? 'AI Wins!' : 'You Win!';
         } else {
-            document.getElementById('winner').textContent = 
+            document.getElementById('winner').textContent =
                 topPaddle.score > bottomPaddle.score ? 'Top Player Wins!' : 'Bottom Player Wins!';
         }
         
@@ -350,21 +368,19 @@ function resetGame() {
 
 // Handle window resize
 window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    bottomPaddle.y = canvas.height - bottomPaddle.height;
+    resizeCanvas();
+    bottomPaddle.y = canvas.height - bottomPaddle.height - getBottomOffset();
 });
-const homeBtn = document.getElementById('homeBtn');
 
 homeBtn.addEventListener('click', () => {
-    // Reset game state (optional if tumko reset chahiye)
+    // Reset game state
     gameOver = false;
     gameOverScreen.style.display = 'none';
     topPaddle.score = 0;
     bottomPaddle.score = 0;
     resetBall();
 
-    // Hide the game container and show the start screen
+    // Hide game container and show start screen
     gameContainer.style.display = 'none';
     startScreen.style.display = 'block';
 });
