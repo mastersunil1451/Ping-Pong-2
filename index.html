@@ -64,7 +64,7 @@
 <!-- Start screen: Contains mode and game start buttons -->
 <div id="startScreen">
     <button id="modeBtn">Play vs AI</button>
-    <button id="aiDifficulty" style="display:none;">Easy</button>
+    <button id="aiDifficulty" style="display:none;">Medium</button>
     <br>
     <button id="startGameBtn">Start Game</button>
 </div>
@@ -126,8 +126,8 @@ const ball = {
     x: 0,
     y: 0,
     speedX: 3,
-    speedY: 4,        // initial Y speed set according to base speed
-    baseSpeed: 4      // Ball ki starting speed ko 5 se 4 kar diya
+    speedY: 4,        // Initial speeds; will be reset in resetBall()
+    baseSpeed: 4      // Base speed used for reset logic
 };
 
 const maxScore = 5;
@@ -179,6 +179,7 @@ function init() {
     
     // Position paddles
     topPaddle.x = (canvas.width - topPaddle.width) / 2;
+    topPaddle.y = 0;
     bottomPaddle.x = (canvas.width - bottomPaddle.width) / 2;
     bottomPaddle.y = canvas.height - bottomPaddle.height - getBottomOffset();
     
@@ -216,12 +217,14 @@ function gameLoop() {
 
 // Update game state
 function update() {
-    // Determine speed increment factor based on mode: lower increment for Vs AI mode
+    // Determine speed increment factor based on mode: lower increment for vs AI mode
     const speedIncrement = ai.enabled ? 1.02 : 1.04;
     
-    // AI movement for top paddle
+    // AI movement for top paddle with error margin for a more human-like reaction
     if (topPaddle.isAI) {
-        const targetX = ball.x + ball.size / 2 - topPaddle.width / 2;
+        // Adding random error margin inversely proportional to difficulty
+        let errorMargin = (Math.random() - 0.5) * (40 * (1 - ai.difficulty));
+        const targetX = ball.x + ball.size / 2 - topPaddle.width / 2 + errorMargin;
         topPaddle.x += (targetX - topPaddle.x) * ai.difficulty;
         topPaddle.x = Math.max(0, Math.min(canvas.width - topPaddle.width, topPaddle.x));
     }
@@ -291,9 +294,15 @@ function draw() {
 function resetBall() {
     ball.x = canvas.width / 2 - ball.size / 2;
     ball.y = canvas.height / 2 - ball.size / 2;
-    // Initial speeds based on the updated base speed (4 instead of 5)
-    ball.speedX = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
-    ball.speedY = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+    
+    // For vs AI mode, start ball at a slower speed
+    if (ai.enabled) {
+        ball.speedX = (ball.baseSpeed - 1) * (Math.random() > 0.5 ? 1 : -1);
+        ball.speedY = (ball.baseSpeed - 1) * (Math.random() > 0.5 ? 1 : -1);
+    } else {
+        ball.speedX = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+        ball.speedY = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+    }
 }
 
 // Touch handlers
@@ -385,5 +394,6 @@ homeBtn.addEventListener('click', () => {
     startScreen.style.display = 'block';
 });
 </script>
+
 </body>
 </html>
